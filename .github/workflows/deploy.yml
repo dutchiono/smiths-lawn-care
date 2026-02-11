@@ -1,3 +1,5 @@
+name: Deploy to Server
+
 on:
   push:
     branches:
@@ -22,19 +24,16 @@ jobs:
             set -e
 
             APP_DIR="/var/www/lawn"
-            REPO_URL="https://github.com/dutchiono/smiths-lawn-care.git"
+            REPO_URL="https://github.com/ionoi-inc/smiths-lawn-care.git"
 
             echo "Starting deployment..."
 
             if [ -d "$APP_DIR/.git" ]; then
-              echo "Pulling latest changes..."
+              echo "Updating remote to org repo..."
               cd $APP_DIR
-              git pull origin main
-            elif [ -d "$APP_DIR" ]; then
-              echo "Directory exists but not a git repo. Backing up and cloning fresh..."
-              sudo mv $APP_DIR ${APP_DIR}.backup.$(date +%s)
-              git clone $REPO_URL $APP_DIR
-              cd $APP_DIR
+              git remote set-url origin $REPO_URL
+              git fetch origin main
+              git reset --hard origin/main
             else
               echo "Initial clone..."
               git clone $REPO_URL $APP_DIR
@@ -43,6 +42,12 @@ jobs:
 
             echo "Installing dependencies..."
             npm install --omit=dev
+
+            echo "Preserving .env — creating only if missing..."
+            if [ ! -f .env ]; then
+              echo "PORT=3147" > .env
+              echo "NODE_ENV=production" >> .env
+            fi
 
             echo "Restarting service..."
             sudo systemctl restart lawn-service
